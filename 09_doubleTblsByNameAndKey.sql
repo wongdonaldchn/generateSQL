@@ -1,68 +1,70 @@
 set serveroutput on
 
 ----------------------------------------------------------------------------------------------
--- ãƒ—ãƒ­ã‚·ãƒ¼ã‚¸ãƒ£
+-- ƒvƒƒV[ƒWƒƒ
 ----------------------------------------------------------------------------------------------
---ã€€â‘ å˜ç´”å˜ç‹¬ä¸»ã‚­ãƒ¼ã§ã®å€å¢—å…±é€šãƒ—ãƒ­ã‚·ãƒ¼ã‚¸ãƒ£
+--@‡@’Pƒ’P“ÆåƒL[‚Å‚Ì”{‘‹¤’ÊƒvƒƒV[ƒWƒƒ
 ----------------------------------------------------------------------------------------------
 create or replace procedure doubleTblsByNameAndKey(
-	tableName in varchar, 					-- ãƒ†ãƒ¼ãƒ–ãƒ«å
-	pk in varchar,								-- ä¸»ã‚­ãƒ¼
-	startValue in number					-- é–‹å§‹å€¤ï¼ˆä¸»ã‚­ãƒ¼ã®é–‹å§‹å€¤ã‚’æŒ‡å®šã™ã‚‹ã€é–‹å§‹å€¤ã¯ãƒ†ãƒ¼ãƒ–ãƒ«ã®æœ€å¤§å€¤ã‚ˆã‚Šå°ã•ã„å ´åˆã€ãƒ†ãƒ¼ãƒ–ãƒ«ã®æœ€å¤§å€¤ã‚’ç”¨ã„ã‚‹ï¼‰
+	tableName in varchar, 					-- ƒe[ƒuƒ‹–¼
+	pk in varchar,								-- åƒL[
+	startValue in number,					-- ŠJn’liåƒL[‚ÌŠJn’l‚ğw’è‚·‚éAŠJn’l‚Íƒe[ƒuƒ‹‚ÌÅ‘å’l‚æ‚è¬‚³‚¢ê‡Aƒe[ƒuƒ‹‚ÌÅ‘å’l‚ğ—p‚¢‚éj
+	toExtendCnt in number					-- ‘•w’èŒ”iŒ³ƒf[ƒ^‚ÌŒ”‚æ‚è‘å‚«‚¢‚Ìê‡‚ÍŒ³ƒf[ƒ^‚É‚æ‚è‘•j
 )
 is
-	extendCols colArrays;					-- å¢—å¹…å¯¾è±¡ã‚³ãƒ©ãƒ åãƒªã‚¹ãƒˆ
-	colNames varchar(5000); 			-- åˆ—å
+	extendCols colArrays;					-- ‘•‘ÎÛƒRƒ‰ƒ€–¼ƒŠƒXƒg
+	colNames varchar(5000); 			-- —ñ–¼
 		
-	sql_str varchar(20000); 			-- SQLæ–‡
+	sql_str varchar(20000); 			-- SQL•¶
 	
-    currentCnt number;        			-- ç¾çŠ¶ã®ç·ä»¶æ•°
-    maxID number;          				-- IDæœ€å¤§å€¤
+    currentCnt number;        			-- Œ»ó‚Ì‘Œ”
+    maxID number;          				-- IDÅ‘å’l
 begin
 
-	dbms_output.put_line('ãƒ†ãƒ¼ãƒ–ãƒ«: ' || tableName);
+	dbms_output.put_line('ƒe[ƒuƒ‹: ' || tableName);
 	
-	-- å¢—å¹…å¯¾è±¡ã‚³ãƒ©ãƒ 
+	-- ‘•‘ÎÛƒRƒ‰ƒ€
 	extendCols := colArrays(pk);
-	-- å…ƒãƒ‡ãƒ¼ã‚¿å¯¾è±¡ã‚³ãƒ©ãƒ å–å¾—	
+	-- Œ³ƒf[ƒ^‘ÎÛƒRƒ‰ƒ€æ“¾	
 	colNames := getTblCols(tableName, extendCols, colArrays(' '));
 	
-	-- ä¸»ã‚­ãƒ¼æœ€å¤§å€¤å–å¾—
+	-- åƒL[Å‘å’læ“¾
 	sql_str := 'SELECT MAX(' || extendCols(1) || ') FROM ' || tableName;	
 	execute immediate sql_str into maxID;
-	dbms_output.put_line('å¢—å¹…å‰ä¸»ã‚­ãƒ¼æœ€å¤§å€¤ : ' || maxID);
-	dbms_output.put_line('æŒ‡å®šé–‹å§‹å€¤ : ' || startValue);
+	dbms_output.put_line('‘•‘OåƒL[Å‘å’l : ' || maxID);
+	dbms_output.put_line('w’èŠJn’l : ' || startValue);
 	if (maxID < startValue) then
 		maxID := startValue;
-		dbms_output.put_line('ä¸»ã‚­ãƒ¼ã®å¢—å¹…é–‹å§‹å€¤ : ' || maxID);
+		dbms_output.put_line('åƒL[‚Ì‘•ŠJn’l : ' || maxID);
 	end if;
 	
-	-- å¢—å¹…å¯¾è±¡ä»¶æ•°
+	-- ‘•‘ÎÛŒ”
 	sql_str := 'SELECT COUNT(*) FROM ' || tableName;	
 	execute immediate sql_str into currentCnt;
-	dbms_output.put_line('å¢—å¹…å¯¾è±¡ä»¶æ•° : ' || currentCnt);
+	dbms_output.put_line('‘•‘ÎÛŒ” : ' || currentCnt);
 	
-	-- å¢—å¹…å®Ÿæ–½
+	-- ‘•À{
 	sql_str := 'INSERT /*APPEND*/ INTO ' || tableName || '('
-					|| getColsWithComma(extendCols)	 --INSERTå¯¾è±¡ã‚³ãƒ©ãƒ ï¼ˆé †ç•ªæŒ‡å®šã®ãŸã‚ã€å¢—å¹…é …ç›®ï¼‰
+					|| getColsWithComma(extendCols)	 --INSERT‘ÎÛƒRƒ‰ƒ€i‡”Ôw’è‚Ì‚½‚ßA‘•€–Új
 					|| ', '
-					|| colNames									 --INSERTå¯¾è±¡ã‚³ãƒ©ãƒ ï¼ˆé †ç•ªæŒ‡å®šã®ãŸã‚ã€å¢—å¹…å…ƒãƒ‡ãƒ¼ã‚¿é …ç›®ï¼‰
+					|| colNames									 --INSERT‘ÎÛƒRƒ‰ƒ€i‡”Ôw’è‚Ì‚½‚ßA‘•Œ³ƒf[ƒ^€–Új
 					|| ') '
 					
-					|| 'SELECT TO_CHAR(' || maxID || '+rownum), '		--å¢—å¹…é …ç›®ï¼‰
-					|| colNames											--å¢—å¹…å…ƒãƒ‡ãƒ¼ã‚¿é …ç›®
-					|| ' FROM (SELECT ' || colNames || ' FROM ' || tableName	--å¢—å¹…å…ƒãƒ‡ãƒ¼ã‚¿é …ç›®å–å¾—
-					|| ' ORDER BY ' || extendCols(1) || ')';							--ã‚½ãƒ¼ãƒˆã‚­ãƒ¼æŒ‡å®š
+					|| 'SELECT TO_CHAR(' || maxID || '+rownum), '		--‘•€–Új
+					|| colNames											--‘•Œ³ƒf[ƒ^€–Ú
+					|| ' FROM (SELECT ' || colNames || ' FROM ' || tableName	--‘•Œ³ƒf[ƒ^€–Úæ“¾
+					|| ' ORDER BY ' || extendCols(1) || ')';							--ƒ\[ƒgƒL[w’è
+					
+	sql_str := sql_str || ' WHERE rownum <= ' || toExtendCnt;  --Œ”w’èi‚à‚µ‚­‚ÍÅ‘åŒ”j
 	
-	--sql_str := sql_str || ' WHERE rownum <= 1';  --ãƒ†ã‚¹ãƒˆç”¨ã€ä»¶æ•°çµã£ã¦ã„ã‚‹
 	
-	--dbms_output.put_line(sql_str); --ãƒ†ã‚¹ãƒˆç”¨ã€SQLå‡ºåŠ›
+	--dbms_output.put_line(sql_str); --ƒeƒXƒg—pASQLo—Í
 	execute immediate sql_str;
 	
-	-- å¢—å¹…å®Ÿæ–½å¾Œç·ä»¶æ•°
+	-- ‘•À{Œã‘Œ”
 	sql_str := 'SELECT COUNT(*) FROM ' || tableName;	
 	execute immediate sql_str into currentCnt;
-	dbms_output.put_line('å¢—å¹…å®Ÿæ–½å¾Œç·ä»¶æ•° : ' || currentCnt);
+	dbms_output.put_line('‘•À{Œã‘Œ” : ' || currentCnt);
 	
 end doubleTblsByNameAndKey;
 /

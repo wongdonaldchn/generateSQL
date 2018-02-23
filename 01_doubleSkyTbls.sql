@@ -285,19 +285,19 @@ begin
 	dbms_output.put_line(logTblName || '増幅件数 : ' || extendCnt);
 		
 	
-	-- 請求年で増幅の総件数
+	-- 稼働月前月の総件数
 	sql_str := 'SELECT COUNT(*) FROM CARD_KYK WHERE LATEST_BILL_CREATE_DATE = ' 
 				|| addQuota(bill_create_date) || ' AND MEM_NO >' || addQuota(max_MEM_NO);
 	execute immediate sql_str into currentCnt;
-	dbms_output.put_line(logTblName || '請求年で増幅の総件数 : ' || currentCnt);
+	dbms_output.put_line(logTblName || '稼働月前月で増幅の総件数 : ' || currentCnt);
 		
 	
-	-- 稼働月前月の総件数
+	-- 請求年で増幅の総件数
 	sql_str := 'SELECT COUNT(*) FROM CARD_KYK WHERE NENKAIHI_SKY_KIJUN_YEAR = ' 
 				|| addQuota(sky_year) || ' AND NENKAIHI_SKY_KIJUN_MONTH = '
 				|| addQuota(sky_month) || ' AND MEM_NO >' || addQuota(max_MEM_NO);
 	execute immediate sql_str into currentCnt;
-	dbms_output.put_line(logTblName || '稼働月前月の総件数 : ' || currentCnt);
+	dbms_output.put_line(logTblName || '請求年で増幅の総件数 : ' || currentCnt);
 	---------------------------------------------------------
 	
 	
@@ -953,6 +953,76 @@ begin
 	
 	-- 増幅後総件数
 	SELECT COUNT(*) INTO currentCnt FROM KYK_CST_KANREN;	
+	dbms_output.put_line(logTblName || '増幅実施後総件数 : ' || currentCnt);
+	
+	extendCnt := currentCnt - extendCnt; --増幅件数を設定する
+	dbms_output.put_line(logTblName || '増幅件数 : ' || extendCnt);
+
+	---------------------------------------------------------
+	
+	---------------------------------------------------------
+	-- 非カード契約顧客関連-HI_CARD_KYK_CST_KANREN
+	logTblName := 'テーブル名：非カード契約顧客関連(HI_CARD_KYK_CST_KANREN)　';
+
+	-- 増幅前総件数
+	SELECT COUNT(*) INTO currentCnt FROM HI_CARD_KYK_CST_KANREN;	
+	dbms_output.put_line(logTblName || '増幅実施前総件数 : ' || currentCnt);
+	extendCnt := currentCnt; --増幅対象件数を設定する
+	
+	-- 契約顧客関連番号最大値取得
+	SELECT MAX(KYK_CST_KANREN_NO) INTO max_KEY1 FROM HI_CARD_KYK_CST_KANREN;
+	dbms_output.put_line(logTblName || '契約顧客関連番号最大値取得 : ' || max_KEY1);
+	-- 申込番号最大値取得
+	max_KEY2 := 0;
+	
+	extendCols := colArrays('KYK_CST_KANREN_NO',
+										'MEM_NO',
+										'CST_NO',
+										'MOSIKOMI_NO',
+										'CARD_NO');
+	defaultCols := colArrays('CARD_HAKKO_SIGN',                                                        -- カード発行有サイン：有：1
+										'DELETE_SIGN',                                                                  -- 初期値-
+										'DELETE_DATE',                                                                  -- 初期値-
+										'INSERT_USER_ID',                                                            ---初期値
+										'INSERT_DATE_TIME',                                                        -- 初期値-
+										'UPDATE_USER_ID',                                                            -- 初期値-
+										'UPDATE_DATE_TIME');                                                      ---初期値
+	defaultVals := addQuota('1') || ', '			         		                    -- CARD_HAKKO_SIGN ：有：1
+						|| addQuota('0') || ', '		         		                    -- DELETE_SIGN                                                                  -- 初期値-
+						|| addQuota('        ') || ', '		         		                    -- DELETE_DATE                                                                  -- 初期値-
+						|| addQuota(' ')	 || ', '												--INSERT_USER_ID
+						|| 'sysdate, '																--INSERT_DATE_TIME
+						|| addQuota(' ')	 || ', '												--UPDATE_USER_ID
+						|| 'sysdate'; 																--UPDATE_DATE_TIME
+	
+	colNames := getTblCols('HI_CARD_KYK_CST_KANREN', extendCols, defaultCols);
+	
+	sql_str := 'INSERT /*APPEND*/ INTO HI_CARD_KYK_CST_KANREN('				--非カード契約顧客関連-HI_CARD_KYK_CST_KANREN
+					|| getColsWithComma(extendCols)		--INSERT対象コラム（順番指定のため、増幅項目）
+					|| ', '
+					|| colNames										--INSERT対象コラム（順番指定のため、増幅元データ項目）
+					|| ', '
+					|| getColsWithComma(defaultCols)	 	--INSERT対象コラム（順番指定のため、デフォルト値項目）
+					|| ') '
+	
+					|| 'SELECT TO_CHAR(' || max_KEY1 || '+rownum), '			--増幅項目-KYK_CST_KANREN_NO
+					|| 'TO_CHAR(' || max_MEM_NO || '+rownum), '							--増幅項目-MEM_NO
+					|| 'TO_CHAR(' || max_CST_NO || '+rownum), '							--増幅項目-CST_NO
+					|| 'TO_CHAR(' || max_KEY2 || '+rownum), '							--増幅項目-MOSIKOMI_NO
+					|| 'TO_CHAR(' || max_CARD_NO || '+rownum), '							--増幅項目-CARD_NO
+					|| colNames																			--増幅元データ項目
+					|| ', '
+					|| defaultVals 																		--デフォルト値項目
+					|| ' FROM (SELECT ' || colNames || ' FROM HI_CARD_KYK_CST_KANREN '		--増幅元データ項目取得
+					|| ' ORDER BY MEM_NO)';															--ソートキー指定-MEM_NO
+	
+	sql_str := sql_str || ' WHERE rownum <= ' || extendTargetCnt;  --件数指定（もしくは最大件数）
+	
+	--dbms_output.put_line(sql_str); --テスト用、SQL出力
+	execute immediate sql_str;
+	
+	-- 増幅後総件数
+	SELECT COUNT(*) INTO currentCnt FROM HI_CARD_KYK_CST_KANREN;	
 	dbms_output.put_line(logTblName || '増幅実施後総件数 : ' || currentCnt);
 	
 	extendCnt := currentCnt - extendCnt; --増幅件数を設定する

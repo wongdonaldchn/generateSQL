@@ -89,15 +89,15 @@ begin
 	
 	-- 増幅実施
 	---------------------------------------------------------
-	-- ショッピング売上明細-SP_URI_DETAIL_TEST
-	logTblName := 'テーブル名：ショッピング売上明細(SP_URI_DETAIL_TEST)　';
+	-- ショッピング売上明細-SP_URI_DETAIL
+	logTblName := 'テーブル名：ショッピング売上明細(SP_URI_DETAIL)　';
 	
 	-- 売上入金明細番号最大値取得
-	SELECT MAX(URI_NYK_DETAIL_NO) INTO max_KEY1 FROM SP_URI_DETAIL_TEST;	
+	SELECT MAX(URI_NYK_DETAIL_NO) INTO max_KEY1 FROM SP_URI_DETAIL;	
 	dbms_output.put_line('売上入金明細番号最大値取得 : ' || max_KEY1);
 	
 	-- 増幅前件数
-	SELECT COUNT(*) INTO currentCnt FROM SP_URI_DETAIL_TEST;	
+	SELECT COUNT(*) INTO currentCnt FROM SP_URI_DETAIL;	
 	dbms_output.put_line(logTblName || '増幅実施前総件数 : ' || currentCnt);
 	extendCnt := currentCnt; 
 		
@@ -117,10 +117,10 @@ begin
 						|| addQuota(' ')	 || ', '		--UPDATE_USER_ID
 						|| 'sysdate'; 				--UPDATE_DATE_TIME
 	
-	colNames := getTblCols('SP_URI_DETAIL_TEST', extendCols, defaultCols);
+	colNames := getTblCols('SP_URI_DETAIL', extendCols, defaultCols);
 	
 	--　明細用
-	detailSql := 'SELECT ' || colNames || ' FROM SP_URI_DETAIL_TEST WHERE '
+	detailSql := 'SELECT ' || colNames || ' FROM SP_URI_DETAIL WHERE '
 					|| 'URI_NO IN (' || originUriNo || ') ORDER BY URI_NO';	--元売上番号
 	
 	sql_str := 'SELECT COUNT(*) FROM (' || detailSql || ')';
@@ -131,7 +131,7 @@ begin
 	dbms_output.put_line(logTblName || '各会員の増幅明細件数 : ' || currentCnt);
 	
 	
-	sql_str := 'INSERT /*APPEND*/ INTO SP_URI_DETAIL_TEST('				--ショッピング売上明細-SP_URI_DETAIL_TEST
+	sql_str := 'INSERT /*APPEND*/ INTO SP_URI_DETAIL('				--ショッピング売上明細-SP_URI_DETAIL
 					|| getColsWithComma(extendCols)		--INSERT対象コラム（順番指定のため、増幅項目）
 					|| ', '
 					|| colNames										--INSERT対象コラム（順番指定のため、増幅元データ項目）
@@ -156,7 +156,7 @@ begin
 	execute immediate sql_str;
 	
 	-- 増幅後件数
-	SELECT COUNT(*) INTO currentCnt FROM SP_URI_DETAIL_TEST;	
+	SELECT COUNT(*) INTO currentCnt FROM SP_URI_DETAIL;	
 	dbms_output.put_line(logTblName || '増幅実施後総件数 : ' || currentCnt);
 	extendCnt := currentCnt - extendCnt; --増幅件数を設定する
 	dbms_output.put_line(logTblName || '増幅件数 : ' || extendCnt);
@@ -188,7 +188,8 @@ begin
 	
 	--　明細用
 	detailSql := 'SELECT ' || colNames || ' FROM URI_DETAIL_ZAN WHERE '
-					|| 'URI_NO IN (' || originUriNo || ') ORDER BY URI_NO';	--元売上番号
+					|| 'ZAN_NO IN (SELECT MAX(ZAN_NO) FROM URI_DETAIL_ZAN WHERE '		--唯一性
+					|| 'URI_NO IN (' || originUriNo || ') GROUP BY URI_NO) ORDER BY URI_NO';	--元売上番号
 	
 	sql_str := 'SELECT COUNT(*) FROM (' || detailSql || ')';
 	
@@ -255,8 +256,10 @@ begin
 	colNames := getTblCols('URI_DETAIL_SKY_ZAN', extendCols, defaultCols);
 	
 	--　明細用
-	detailSql := 'SELECT ' || colNames || ' FROM URI_DETAIL_SKY_ZAN WHERE '
-					|| 'URI_NO IN (' || originUriNo || ') ORDER BY URI_NO';	--元売上番号
+	detailSql := 'SELECT ' || colNames || ' FROM URI_DETAIL_SKY_ZAN M1 INNER JOIN '
+					|| '(SELECT MAX(ZAN_NO) ZN, MAX(SKY_YM) YM, URI_NO UN FROM URI_DETAIL_SKY_ZAN WHERE '
+					|| 'URI_NO IN (' || originUriNo || ') GROUP BY URI_NO) S1 '	--元売上番号
+					|| 'ON M1.URI_NO=S1.UN AND M1.ZAN_NO=ZN AND M1.SKY_YM=S1.YM ORDER BY URI_NO'; --唯一性
 	
 	sql_str := 'SELECT COUNT(*) FROM (' || detailSql || ')';
 	
